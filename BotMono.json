@@ -1,0 +1,14 @@
+{
+  "Jerry_FaGe": ["Jerry_FaGe", "发哥", "开发者", "作者", "test"],
+  "stone": ["stone", "石头"],
+  "cobblestone": ["cobblestone", "圆石", "原石", "鹅卵石"],
+  "sand": ["sand", "沙子"],
+  "piston": ["piston", "活塞"],
+  "sticky_piston": ["sticky_piston", "粘性活塞"],
+  "comparator": ["comparator", "红石比较器", "比较器"],
+  "repeater": ["repeater", "红石中继器", "中继器"],
+  "lever": ["lever", "拉杆"],
+  "tnt": ["tnt", "TNT", "C4", "boom"],
+  "fireworks": ["fireworks" ,"烟花", "火箭", "烟花火箭"],
+  "elytra": ["elytra", "鞘翅"]
+}
