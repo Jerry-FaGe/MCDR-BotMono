@@ -44,7 +44,7 @@ help_body = {
     f"§b{prefix_short} list": "§r显示由本插件召唤出的假人列表",
     f"§b{prefix_short} reload": "§r重载插件配置",
     f"§b{prefix_short} <mono>": "§r召唤一个用于存储<mono>的假人",
-    f'§b{prefix_short} <mono> spawn': "§r召唤一个用于存储<mono>的假人",
+    f"§b{prefix_short} <mono> spawn": "§r召唤一个用于存储<mono>的假人",
     f"§b{prefix_short} <mono> kill": "§r干掉用于存储<mono>的假人",
     # f"§b{prefix_short} <mono> here": "§r将用于存储<mono>的假人传送到自己身边",
     f"§b{prefix_short} <mono> one": "§r假人扔出一个手中物品（执行此条前无需执行spawn，如假人不存在会自动创建）",
@@ -147,7 +147,7 @@ def on_info(server, info):
                 head = [help_head]
                 body = [r.RText(f'{k} {v}\n').c(
                     r.RAction.suggest_command, k.replace('§b', '')).h(v)
-                     for k, v in help_body.items()]
+                        for k, v in help_body.items()]
                 server.reply(info, r.RTextList(*(head + body)))
 
             elif len(args) == 2:
@@ -161,7 +161,7 @@ def on_info(server, info):
                             # r.RText('§d[传送]  ').c(
                             #     r.RAction.run_command, f'{prefix_short} {name} here').h(f'§7将§6{name}§7传送至身边'),
                             r.RText('§d[罪人按钮]  ').c(
-								r.RAction.run_command, f'{prefix_short} {name} here').h(f'§4使用此功能你就会变成罪人'),
+                                r.RAction.run_command, f'{prefix_short} {name} here').h(f'§4使用此功能你就会变成罪人'),
                             r.RText('§d[扔出所有]  ').c(
                                 r.RAction.run_command, f'{prefix_short} {name} all').h(f'§6{name}§7扔出身上所有物品'),
                             r.RText('§d[扔出一个]  ').c(
