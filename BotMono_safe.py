@@ -25,7 +25,8 @@ help_msg = '''
 §b{prefix_short} §r显示本帮助信息
 §b{prefix_short} list §r显示由本插件召唤出的假人列表
 §b{prefix_short} reload §r重载插件配置
-§b{prefix_short} <mono> §r/ §b{prefix_short} <mono> spawn §r召唤一个用于存储<mono>的假人
+§b{prefix_short} <mono> §r输出一个可点击的界面，自动根据假人是否在线改变选项
+§b{prefix_short} <mono> spawn §r召唤一个用于存储<mono>的假人
 §b{prefix_short} <mono> kill §r干掉用于存储<mono>的假人
 §b{prefix_short} <mono> here §r将用于存储<mono>的假人传送到自己身边
 §b{prefix_short} <mono> one §r假人扔出一个手中物品（执行此条前无需执行spawn，如假人不存在会自动创建）
@@ -43,7 +44,7 @@ help_body = {
     f"§b{prefix_short}": "§r显示本帮助信息",
     f"§b{prefix_short} list": "§r显示由本插件召唤出的假人列表",
     f"§b{prefix_short} reload": "§r重载插件配置",
-    f"§b{prefix_short} <mono>": "§r召唤一个用于存储<mono>的假人",
+    f"§b{prefix_short} <mono>": "§r输出一个可点击的界面，自动根据假人是否在线改变选项",
     f"§b{prefix_short} <mono> spawn": "§r召唤一个用于存储<mono>的假人",
     f"§b{prefix_short} <mono> kill": "§r干掉用于存储<mono>的假人",
     # f"§b{prefix_short} <mono> here": "§r将用于存储<mono>的假人传送到自己身边",
@@ -71,7 +72,7 @@ class Server:
 
 def on_load(server, old):
     global bot_list
-    server.add_help_message(prefix_short, '假人物品映射')
+    server.add_help_message(prefix_short, f'假人物品映射(和谐版)，输入§6{prefix_short}查看帮助')
     if old is not None and old.bot_list is not None:
         bot_list = old.bot_list
     else:
@@ -161,7 +162,7 @@ def on_info(server, info):
                             # r.RText('§d[传送]  ').c(
                             #     r.RAction.run_command, f'{prefix_short} {name} here').h(f'§7将§6{name}§7传送至身边'),
                             r.RText('§d[罪人按钮]  ').c(
-                                r.RAction.run_command, f'{prefix_short} {name} here').h(f'§4使用此功能你就会变成罪人'),
+                                r.RAction.run_command, f'{prefix_short} {name} here').h('§4使用此功能你就会变成罪人'),
                             r.RText('§d[扔出所有]  ').c(
                                 r.RAction.run_command, f'{prefix_short} {name} all').h(f'§6{name}§7扔出身上所有物品'),
                             r.RText('§d[扔出一个]  ').c(
@@ -182,11 +183,42 @@ def on_info(server, info):
                         server.say('§b[BotMono]§4由玩家§d{}§4发起的BotMono重载失败：{}'.format(info.player, e))
 
                 elif search(args[1]):
-                    if search(args[1]) not in bot_list:
-                        server.execute(spawn(server, info, search(args[1])))
-                        bot_list.append(search(args[1]))
+                    name = search(args[1])
+                    if name not in bot_list:
+                        # server.execute(spawn(server, info, search(args[1])))
+                        # bot_list.append(search(args[1]))
+                        msg = r.RTextList(
+                            '\n'
+                            f'§7----------- §6{name}§7 -----------\n',
+                            f'§7此假人存放:§6 {bot_dic.get(search(args[1]), "没有索引")}\n',
+                            r.RText('§d[召唤]  ').c(
+                                r.RAction.run_command, f'{prefix_short} {name} spawn').h(f'§7召唤§6{name}'),
+                            r.RText('§d[扔出所有]  ').c(
+                                r.RAction.run_command, f'{prefix_short} {name} all').h(f'§6{name}§7扔出身上所有物品'),
+                            r.RText('§d[扔出一个]  ').c(
+                                r.RAction.run_command, f'{prefix_short} {name} one').h(f'§6{name}§7扔出一个物品'),
+                            r.RText('§d[扔出手中]  ').c(
+                                r.RAction.run_command, f'{prefix_short} {name} handall').h(f'§6{name}§7扔出手中物品')
+                        )
+                        server.reply(info, msg)
                     else:
-                        server.reply(info, f"§b[BotMono]§4假人§d{search(args[1])}§6（{args[1]}）§4已经在线")
+                        # server.reply(info, f"§b[BotMono]§4假人§d{search(args[1])}§6（{args[1]}）§4已经在线")
+                        msg = r.RTextList(
+                            '\n'
+                            f'§7----------- §6{name}§7 -----------\n',
+                            f'§7此假人存放:§6 {bot_dic.get(search(args[1]), "没有索引")}\n',
+                            r.RText('§d[罪人按钮]  ').c(
+                                r.RAction.run_command, f'{prefix_short} {name} here').h('§4使用此功能你就会变成罪人'),
+                            r.RText('§d[扔出所有]  ').c(
+                                r.RAction.run_command, f'{prefix_short} {name} all').h(f'§6{name}§7扔出身上所有物品'),
+                            r.RText('§d[扔出一个]  ').c(
+                                r.RAction.run_command, f'{prefix_short} {name} one').h(f'§6{name}§7扔出一个物品'),
+                            r.RText('§d[扔出手中]  ').c(
+                                r.RAction.run_command, f'{prefix_short} {name} handall').h(f'§6{name}§7扔出手中物品'),
+                            r.RText('§d[下线]  ').c(
+                                r.RAction.run_command, f'{prefix_short} {name} kill').h(f'§7干掉§6{name}')
+                        )
+                        server.reply(info, msg)
 
                 else:
                     server.reply(info, f"§b[BotMono]§4未查询到§d{args[1]}§4对应的假人")
