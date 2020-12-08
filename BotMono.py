@@ -180,11 +180,42 @@ def on_info(server, info):
                         server.say('§b[BotMono]§4由玩家§d{}§4发起的BotMono重载失败：{}'.format(info.player, e))
 
                 elif search(args[1]):
-                    if search(args[1]) not in bot_list:
-                        server.execute(spawn(server, info, search(args[1])))
-                        bot_list.append(search(args[1]))
+                    name = search(args[1])
+                    if name not in bot_list:
+                        # server.execute(spawn(server, info, search(args[1])))
+                        # bot_list.append(search(args[1]))
+                        msg = r.RTextList(
+                            '\n'
+                            f'§7----------- §6{name} §4离线 §7-----------\n',
+                            f'§7此假人存放:§6 {bot_dic.get(search(args[1]), "没有索引")}\n',
+                            r.RText('§d[召唤]  ').c(
+                                r.RAction.run_command, f'{prefix_short} {name} spawn').h(f'§7召唤§6{name}'),
+                            r.RText('§d[扔出所有]  ').c(
+                                r.RAction.run_command, f'{prefix_short} {name} all').h(f'§6{name}§7扔出身上所有物品'),
+                            r.RText('§d[扔出一个]  ').c(
+                                r.RAction.run_command, f'{prefix_short} {name} one').h(f'§6{name}§7扔出一个物品'),
+                            r.RText('§d[扔出手中]  ').c(
+                                r.RAction.run_command, f'{prefix_short} {name} handall').h(f'§6{name}§7扔出手中物品')
+                        )
+                        server.reply(info, msg)
                     else:
-                        server.reply(info, f"§b[BotMono]§4假人§d{search(args[1])}§6（{args[1]}）§4已经在线")
+                        # server.reply(info, f"§b[BotMono]§4假人§d{search(args[1])}§6（{args[1]}）§4已经在线")
+                        msg = r.RTextList(
+                            '\n'
+                            f'§7----------- §6{name} §g在线 §7-----------\n',
+                            f'§7此假人存放:§6 {bot_dic.get(search(args[1]), "没有索引")}\n',
+                            r.RText('§d[传送]  ').c(
+                                r.RAction.run_command, f'{prefix_short} {name} here').h(f'§7将§6{name}§7传送至身边'),
+                            r.RText('§d[扔出所有]  ').c(
+                                r.RAction.run_command, f'{prefix_short} {name} all').h(f'§6{name}§7扔出身上所有物品'),
+                            r.RText('§d[扔出一个]  ').c(
+                                r.RAction.run_command, f'{prefix_short} {name} one').h(f'§6{name}§7扔出一个物品'),
+                            r.RText('§d[扔出手中]  ').c(
+                                r.RAction.run_command, f'{prefix_short} {name} handall').h(f'§6{name}§7扔出手中物品'),
+                            r.RText('§d[下线]  ').c(
+                                r.RAction.run_command, f'{prefix_short} {name} kill').h(f'§7干掉§6{name}')
+                        )
+                        server.reply(info, msg)
 
                 else:
                     server.reply(info, f"§b[BotMono]§4未查询到§d{args[1]}§4对应的假人")

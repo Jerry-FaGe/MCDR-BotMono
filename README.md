@@ -1,6 +1,6 @@
 # MCDR-BotMono（Botもの）
 
-适用于MCDR的将输入的英文，中文（甚至拼音）指向同一假人并提供操作界面和简化指令的插件，需要安装前置插件PlayerInfoAPI。
+适用于MCDR的将输入的英文，中文（甚至拼音）指向同一假人并提供操作界面和简化指令的插件，需要安装前置插件[PlayerInfoAPI](https://github.com/TISUnion/PlayerInfoAPI)。
 
 > 君は道具ではなく、その名が似合う人になろんだ
 
@@ -39,7 +39,19 @@
 [传送]  [扔出所有]  [扔出一个]  [扔出手中]  [下线]
 ```
 * `!!bm reload`: 重载[BotMono.json](https://github.com/Jerry-FaGe/MCDR-BotMono/blob/master/BotMono.json)配置文件，用于用户修改配置。配置文件详见下文**关于配置文件**
-* `!!bm <mono>`和`!!bm <mono> spawn`: 功能相同，用于召唤假人。未来可能会考虑将`!!bm <mono>`独立出来提供类似于`!!bm list`的单假人操作界面。
+* `!!bm <mono>`: 输出一个可点击的界面，自动根据假人是否在线改变选项
+  * 假人在线:
+    ```
+    ----------- fireworks 在线 -----------
+    此假人存放: ["fireworks" ,"烟花", "火箭", "烟花火箭"]
+    [传送]  [扔出所有]  [扔出一个]  [扔出手中]  [下线]  
+    ```
+  * 假人离线:
+    ```
+    ----------- fireworks 离线 -----------
+    此假人存放: ["fireworks" ,"烟花", "火箭", "烟花火箭"]
+    [召唤]  [扔出所有]  [扔出一个]  [扔出手中]  
+    ```
 * `!!bm <mono> here`: 只能将假人传送给自己，不能把自己传给假人。这个功能本来是插件初步完成之后为了完善功能加上的，所谓"传送"，本质也就只是把`/player xxx kill`后`/player xxx spawn`这两条指令封装成一条`!!bm <mono> here`而已。结果全写完之后拿去跟人讨论被人抓住传送这点不放群体批斗，根本没有人在乎你插件是干什么的，人们只在乎你会传送。怕了怕了，[和谐版](https://github.com/Jerry-FaGe/MCDR-BotMono/blob/master/BotMono_safe.py)会完全去掉传送功能。
 
 ## 关于配置文件
