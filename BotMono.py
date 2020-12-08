@@ -183,8 +183,6 @@ def on_info(server, info):
                 elif search(args[1]):
                     name = search(args[1])
                     if name not in bot_list:
-                        # server.execute(spawn(server, info, search(args[1])))
-                        # bot_list.append(search(args[1]))
                         msg = r.RTextList(
                             '\n'
                             f'§7----------- §6{name} §4离线 §7-----------\n',
@@ -200,10 +198,9 @@ def on_info(server, info):
                         )
                         server.reply(info, msg)
                     else:
-                        # server.reply(info, f"§b[BotMono]§4假人§d{search(args[1])}§6（{args[1]}）§4已经在线")
                         msg = r.RTextList(
                             '\n'
-                            f'§7----------- §6{name} §g在线 §7-----------\n',
+                            f'§7----------- §6{name} §a在线 §7-----------\n',
                             f'§7此假人存放:§6 {bot_dic.get(search(args[1]), "没有索引")}\n',
                             r.RText('§d[传送]  ').c(
                                 r.RAction.run_command, f'{prefix_short} {name} here').h(f'§7将§6{name}§7传送至身边'),

@@ -185,11 +185,9 @@ def on_info(server, info):
                 elif search(args[1]):
                     name = search(args[1])
                     if name not in bot_list:
-                        # server.execute(spawn(server, info, search(args[1])))
-                        # bot_list.append(search(args[1]))
                         msg = r.RTextList(
                             '\n'
-                            f'§7----------- §6{name}§7 -----------\n',
+                            f'§7----------- §6{name} §4离线 §7-----------\n',
                             f'§7此假人存放:§6 {bot_dic.get(search(args[1]), "没有索引")}\n',
                             r.RText('§d[召唤]  ').c(
                                 r.RAction.run_command, f'{prefix_short} {name} spawn').h(f'§7召唤§6{name}'),
@@ -202,10 +200,9 @@ def on_info(server, info):
                         )
                         server.reply(info, msg)
                     else:
-                        # server.reply(info, f"§b[BotMono]§4假人§d{search(args[1])}§6（{args[1]}）§4已经在线")
                         msg = r.RTextList(
                             '\n'
-                            f'§7----------- §6{name}§7 -----------\n',
+                            f'§7----------- §6{name} §a在线 §7-----------\n',
                             f'§7此假人存放:§6 {bot_dic.get(search(args[1]), "没有索引")}\n',
                             r.RText('§d[罪人按钮]  ').c(
                                 r.RAction.run_command, f'{prefix_short} {name} here').h('§4使用此功能你就会变成罪人'),
@@ -230,7 +227,7 @@ def on_info(server, info):
                             server.execute(spawn(server, info, name))
                             bot_list.append(name)
                         else:
-                            server.reply(info, f"§b[Botmono]§4假人§d{name}§6（{args[1]}）§4已经在线")
+                            server.reply(info, f"§b[BotMono]§4假人§d{name}§6（{args[1]}）§4已经在线")
 
                     elif args[2] == "kill":
                         if name in bot_list:
