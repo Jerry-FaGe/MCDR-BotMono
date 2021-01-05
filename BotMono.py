@@ -72,7 +72,8 @@ class Server:
 
 def on_load(server, old):
     global bot_list
-    server.add_help_message(prefix_short, f'假人物品映射，输入§6{prefix_short}查看帮助')
+    server.add_help_message(f'{prefix_short}', r.RText(
+        '假人物品映射').c(r.RAction.run_command, f'{prefix_short}').h('点击查看帮助'))
     if old is not None and old.bot_list is not None:
         bot_list = old.bot_list
     else:
