@@ -5,6 +5,7 @@ Created on 2020/12/3
 「君は道具ではなく、その名が似合う人になろんだ」
 @author: Jerry_FaGe
 """
+import os
 import json
 import time
 from utils import rtext as r
@@ -70,34 +71,12 @@ class Server:
         print("执行命令: " + name)
 
 
-def on_load(server, old):
-    global bot_list
-    server.add_help_message(f'{prefix_short}', r.RText(
-        '假人物品映射').c(r.RAction.run_command, f'{prefix_short}').h('点击查看帮助'))
-    if old is not None and old.bot_list is not None:
-        bot_list = old.bot_list
-    else:
-        bot_list = []
-    try:
-        read()
-    except Exception as e:
-        server.say('§b[BotMono]§4配置加载失败，请确认配置路径是否正确：{}'.format(e))
-
-
 def get_pos(server, info):
     PlayerInfoAPI = server.get_plugin_instance('PlayerInfoAPI')
     pos = PlayerInfoAPI.getPlayerInfo(server, info.player, 'Pos')
     dim = PlayerInfoAPI.getPlayerInfo(server, info.player, 'Dimension')
     facing = PlayerInfoAPI.getPlayerInfo(server, info.player, 'Rotation')
     return pos, dim, facing
-
-
-def spawn_cmd(server, info, name):
-    if info.is_player:
-        pos, dim, facing = get_pos(server, info)
-        return f'/player {name} spawn at {pos[0]} {pos[1]} {pos[2]} facing {facing[0]} {facing[1]} in {dim}'
-    else:
-        return f'/player {name} spawn'
 
 
 def read():
@@ -115,6 +94,21 @@ def search(mono):
     for k, v in bot_dic.items():
         if mono in v:
             return k
+
+
+def auth_player(player):
+    """验证玩家是否为bm假人"""
+    lower_dic = {i.lower(): i for i in bot_dic}
+    bot_name = lower_dic.get(player.lower(), None)
+    return bot_name if bot_name else None
+
+
+def spawn_cmd(server, info, name):
+    if info.is_player:
+        pos, dim, facing = get_pos(server, info)
+        return f'/player {name} spawn at {pos[0]} {pos[1]} {pos[2]} facing {facing[0]} {facing[1]} in {dim}'
+    else:
+        return f'/player {name} spawn'
 
 
 def spawn(server, info, name):
@@ -137,11 +131,27 @@ def drop_handall(name):
     return f'/player {name} dropStack once'
 
 
+def on_load(server, old):
+    global bot_list
+    server.add_help_message(f'{prefix_short}', r.RText(
+        '假人物品映射').c(r.RAction.run_command, f'{prefix_short}').h('点击查看帮助'))
+    if old is not None and old.bot_list is not None:
+        bot_list = old.bot_list
+    else:
+        bot_list = []
+    if not os.path.isfile(config_path):
+        save()
+    else:
+        try:
+            read()
+        except Exception as e:
+            server.say('§b[BotMono]§4配置加载失败，请确认配置路径是否正确：{}'.format(e))
+
+
 def on_info(server, info):
     if info.is_user:
         if info.content.startswith(prefix) or info.content.startswith(prefix_short):
             global bot_dic, bot_list
-            read()
             args = info.content.split(' ')
 
             if len(args) == 1:
@@ -224,14 +234,12 @@ def on_info(server, info):
                     if args[2] == "spawn":
                         if name not in bot_list:
                             server.execute(spawn(server, info, name))
-                            bot_list.append(name)
                         else:
                             server.reply(info, f"§b[Botmono]§4假人§d{name}§6（{args[1]}）§4已经在线")
 
                     elif args[2] == "kill":
                         if name in bot_list:
                             server.execute(kill(name))
-                            bot_list.remove(name)
                             server.reply(info, f"§b[BotMono]§a假人§d{name}§6（{args[1]}）§a已被下线")
 
                     elif args[2] == "here":
@@ -243,7 +251,6 @@ def on_info(server, info):
                     elif args[2] == "one":
                         if name not in bot_list:
                             server.execute(spawn(server, info, name))
-                            bot_list.append(name)
                             server.reply(info, f"§b[BotMono]§a已自动创建假人§d{name}§6（{args[1]}）")
                             time.sleep(1)
                         server.execute(drop_one(name))
@@ -252,7 +259,6 @@ def on_info(server, info):
                     elif args[2] == "all":
                         if name not in bot_list:
                             server.execute(spawn(server, info, name))
-                            bot_list.append(name)
                             server.reply(info, f"§b[BotMono]§a已自动创建假人§d{name}§6（{args[1]}）")
                             time.sleep(1)
                         server.execute(drop_all(name))
@@ -261,7 +267,6 @@ def on_info(server, info):
                     elif args[2] == "handall":
                         if name not in bot_list:
                             server.execute(spawn(server, info, name))
-                            bot_list.append(name)
                             server.reply(info, f"§b[BotMono]§a已自动创建假人§d{name}§6（{args[1]}）")
                             time.sleep(1)
                         server.execute(drop_handall(name))
@@ -272,6 +277,20 @@ def on_info(server, info):
 
                 else:
                     server.reply(info, f"§b[BotMono]§4未查询到§d{args[1]}§4对应的假人")
+
+
+def on_player_joined(server, player, info):
+    bot_name = auth_player(player)
+    if bot_name:
+        if bot_name not in bot_list:
+            bot_list.append(bot_name)
+
+
+def on_player_left(server, player):
+    bot_name = auth_player(player)
+    if bot_name:
+        if bot_name in bot_list:
+            bot_list.remove(bot_name)
 
 
 def on_server_stop(server, return_code):
