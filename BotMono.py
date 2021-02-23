@@ -106,7 +106,7 @@ def auth_player(player):
 def spawn_cmd(server, info, name):
     if info.is_player:
         pos, dim, facing = get_pos(server, info)
-        return f'/player {name} spawn at {pos[0]} {pos[1]} {pos[2]} facing {facing[0]} {facing[1]} in {dim}'
+        return f'/execute as {info.player} run player {name} spawn at {pos[0]} {pos[1]} {pos[2]} facing {facing[0]} {facing[1]} in {dim}'
     else:
         return f'/player {name} spawn'
 
