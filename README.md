@@ -1,6 +1,8 @@
 # MCDR-BotMono（Botもの）
 
-适用于[MCDR](https://github.com/Fallen-Breath/MCDReforged)的将输入的英文，中文（甚至拼音）指向同一假人并提供操作界面和简化指令的插件，需要安装前置插件[PlayerInfoAPI](https://github.com/TISUnion/PlayerInfoAPI)。
+适用于[MCDR](https://github.com/Fallen-Breath/MCDReforged)的将输入的英文，中文（甚至拼音）指向同一假人并提供操作界面和简化指令的插件。
+请根据自己的MCDR版本选择安装哪个文件，不带后缀的支持MCDR 0.x,带后缀的支持MCDR 1.x。
+需要安装前置插件[PlayerInfoAPI](https://github.com/TISUnion/PlayerInfoAPI)（MCDR 0.x）或[MinecraftDataAPI](https://github.com/MCDReforged/MinecraftDataAPI)（MCDR 1.x）。
 
 > 君は道具ではなく、その名が似合う人になろんだ
 
