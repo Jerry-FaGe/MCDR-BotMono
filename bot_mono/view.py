@@ -1,0 +1,388 @@
+"""Read-only rendering for plugin help, bot panels and command feedback."""
+
+from __future__ import annotations
+
+import unicodedata
+from typing import TYPE_CHECKING, Literal
+
+from mcdreforged.api.rtext import RText, RTextList, RAction, RColor
+
+from .config import config
+
+if TYPE_CHECKING:
+    from .bot import Bot
+
+
+LIST_PAGE_SIZE = 10
+LIST_NAME_LIMIT = 7
+_LIST_STATUSES = {'all': '全部', 'online': '在线', 'offline': '离线'}
+_FEEDBACK_COLORS = {
+    'success': RColor.green,
+    'request': RColor.white,
+    'info': RColor.gray,
+    'error': RColor.red,
+}
+
+# Vanilla 1.21.4 bitmap advances include the one-pixel gap after each glyph.
+# Most ASCII glyphs advance 6 pixels; CJK glyphs advance 9 and spaces 4.
+_CHAT_GLYPH_WIDTHS = {
+    char: width
+    for width, chars in (
+        (2, "!.,:;'i|"), (3, '`l'), (4, ' "()*I[]t{}'),
+        (5, '<>fk'), (7, '@~'), (8, '…'),
+    )
+    for char in chars
+}
+
+
+HELP_HEAD = """
+================== §bBotMono §r==================
+§6欢迎使用由 @Jerry-FaGe 开发的假人物品映射插件！
+§6你可以在 Github 搜索 MCDR-BotMono 找到本项目！
+§7「君は道具ではなく、その名が似合う人になろんだ」
+===========================================
+"""
+
+
+def get_help_body() -> dict[str, str]:
+    return {
+        f"§7{config.prefix_short}": "§r显示本帮助信息",
+        f"§7{config.prefix_short} list §6[online§7|§6offline] [page]": "§r分页查看假人，每页 10 条，可筛选在线或离线",
+        f"§7{config.prefix_short} list §6[online§7|§6offline] §7search §6<关键词> [page]": "§r搜索登记名、假人名和别名，不区分大小写",
+        f"§7{config.prefix_short} reload": "§r重载插件配置",
+        f"§7{config.prefix_short} add §6<name> <alias>": "§r登记物品假人，或为已有记录追加别名；不召唤假人",
+        f"§7{config.prefix_short} del §6<mono>": "§r删除用于 §6<mono> §r的假人记录（不会下线）",
+        f"§7{config.prefix_short} §6<mono> §7alias": "§r打开别名管理面板",
+        f"§7{config.prefix_short} §6<mono> §7alias add §6<alias>": "§r添加别名，不影响在线状态或动作",
+        f"§7{config.prefix_short} §6<mono> §7alias del §6<alias>": "§r移除别名，不删除假人记录或下线假人",
+        f"§7{config.prefix_short} §6<mono>": "§r输出用于 §6<mono> §r的假人信息",
+        f'§7{config.prefix_short} §6<mono> §7spawn': "§r在执行玩家身边召唤离线假人；已在线时不移动",
+        f"§7{config.prefix_short} §6<mono> §7kill": "§r下线用于 §6<mono> §r的假人",
+        f"§7{config.prefix_short} §6<mono> §7one": "§r扔出主手的一件物品，离线时先自动召唤",
+        f"§7{config.prefix_short} §6<mono> §7all": "§r扔出全部物品栏物品，离线时先自动召唤",
+        f"§7{config.prefix_short} §6<mono> §7handall": "§r扔出主手整组物品，离线时先自动召唤",
+    }
+
+
+def render_help() -> RTextList:
+    body = [RText(f'{key}§7: {text}\n').c(
+        RAction.suggest_command, key.replace('§7', '').replace('§6', '')).h(text)
+        for key, text in get_help_body().items()]
+    return RTextList(HELP_HEAD, *body)
+
+
+def _button(label: str, command: str, description: str, *,
+            color: RColor = RColor.aqua, warning: str | None = None,
+            suggest: bool = False) -> RText:
+    hover = RTextList(RText(description, RColor.white))
+    if warning:
+        hover.append('\n', RText(warning, RColor.yellow))
+    hint = '点击填入命令，检查后按回车执行' if suggest else '点击执行'
+    action = RAction.suggest_command if suggest else RAction.run_command
+    hover.append('\n', RText(hint, RColor.gray))
+    return RText(f'[{label}]', color).c(action, command).h(hover)
+
+
+def _display_name(bot: Bot) -> str:
+    aliases = bot.aliases
+    return aliases[0] if aliases else bot.name
+
+
+def _display_aliases(bot: Bot) -> RText:
+    aliases = bot.aliases
+    return RText('、'.join(aliases) if aliases else '无自定义别名',
+                 RColor.white if aliases else RColor.gray)
+
+
+def _online_status(online: bool) -> RText:
+    return RText('在线' if online else '离线', RColor.green if online else RColor.red)
+
+
+def _display_player_name(bot: Bot) -> RTextList:
+    confirmed_name = bot.confirmed_name
+    result = RTextList(
+        RText('假人名: ', RColor.gray),
+        RText(confirmed_name or bot.expected_name, RColor.white).h(
+            RText(f'登记名: {bot.name}', RColor.gray),
+            RText('\n命令按钮始终使用登记名定位这条记录', RColor.gray),
+        ),
+    )
+    if confirmed_name is None:
+        result.append(RText('（待确认）', RColor.yellow).h(
+            RText('暂用配置推算的名称；收到服务端名称后自动保存', RColor.gray)))
+    return result
+
+
+def _record_details(bot: Bot) -> RTextList:
+    return RTextList(
+        _display_player_name(bot),
+        RText('\n物品别名: ', RColor.gray), _display_aliases(bot),
+        RText('\n召唤方式: 离线时在执行玩家身边上线', RColor.gray),
+        RText('\n在线假人会在原地扔出物品', RColor.yellow),
+    )
+
+
+def render_feedback(message: str, *, bot: Bot | None = None,
+                    kind: Literal['success', 'request', 'info', 'error'] = 'info',
+                    details: str | None = None, name_link: bool = True) -> RTextList:
+    if kind not in _FEEDBACK_COLORS:
+        raise ValueError('未知的反馈类型')
+    result = RTextList(RText('[BM] ', RColor.aqua))
+    if bot is not None:
+        name = _display_name(bot)
+        hover = RTextList(
+            RText('显示名: ', RColor.gray), RText(name, RColor.gold),
+            RText('\n登记名: ', RColor.gray), RText(bot.name, RColor.white),
+            '\n', _display_player_name(bot),
+            RText('\n别名: ', RColor.gray), _display_aliases(bot),
+        )
+        label = RText(name, RColor.gold)
+        if name_link:
+            label.c(RAction.run_command, f'{config.prefix_short} {bot.name}')
+            hover.append(RText('\n点击查看详情', RColor.gray))
+        result.append(label.h(hover), RText(' · ', RColor.gray))
+    # Keep console-visible causes intact without injecting extra chat lines.
+    compact = ' '.join(line.strip() for line in message.replace('\t', ' ').splitlines())
+    body = RText(compact, _FEEDBACK_COLORS[kind])
+    if details or compact != message:
+        hover = RTextList(RText(message, RColor.white))
+        if details:
+            hover.append('\n', RText(details, RColor.gray))
+        body.h(hover)
+    result.append(body)
+    return result
+
+
+def render_action_feedback(bot: Bot, action: str) -> RTextList:
+    messages = {
+        'spawn': '已确认上线',
+        'kill': '下线请求已发送',
+        'one': '扔出主手单件物品请求已发送',
+        'all': '扔出全部物品请求已发送',
+        'handall': '扔出主手整组物品请求已发送',
+    }
+    if action not in messages:
+        raise ValueError(f'未知动作: {action}')
+    return render_feedback(
+        messages[action], bot=bot, kind='success' if action == 'spawn' else 'request',
+        details=None if action == 'spawn' else '这里只确认请求已发送，实际动作和物品数量请以游戏内结果为准',
+    )
+
+
+def render_bot_actions(bot: Bot) -> RTextList:
+    prefix = f'{config.prefix_short} {bot.name}'
+    actions = RTextList()
+    if bot.is_online:
+        actions.append(_button('下线', f'{prefix} kill', '请求让假人下线，保留插件记录', color=RColor.red))
+    else:
+        actions.append(_button('召唤', f'{prefix} spawn', '在执行玩家身边召唤假人', color=RColor.green))
+    location = '离线时先在执行玩家身边召唤；在线时在假人原地扔出'
+    actions.append(
+        '\n', _button('扔出一个', f'{prefix} one', '扔出主手的一件物品', warning=location),
+        ' ', _button('扔出手中', f'{prefix} handall', '扔出主手整组物品', warning=location),
+        ' ', _button('扔出所有', f'{prefix} all', '扔出全部物品栏物品', warning=location),
+    )
+    return actions
+
+
+def render_bot_info(bot: Bot, *, can_operate: bool = True, can_manage: bool = False) -> RTextList:
+    prefix = f'{config.prefix_short} {bot.name}'
+    result = RTextList(
+        RText('----- ', RColor.gray), RText(_display_name(bot), RColor.gold),
+        RText(' · ', RColor.gray), _online_status(bot.is_online), RText(' -----\n', RColor.gray),
+        _record_details(bot), '\n\n',
+    )
+    if can_operate:
+        result.append(render_bot_actions(bot))
+    else:
+        result.append(RText('当前无假人操作权限', RColor.gray))
+    if can_manage:
+        aliases = bot.aliases
+        remove = (_button('移除别名', f'{prefix} alias', '打开别名列表，选择要移除的别名') if aliases else
+                  RText('[移除别名]', RColor.gray).h(RText('当前没有可移除的自定义别名', RColor.gray)))
+        result.append(
+            RText('\n\n管理: ', RColor.gray),
+            _button('添加别名', f'{prefix} alias add ', '在末尾填写新别名；不改变在线状态或动作',
+                    color=RColor.green, suggest=True),
+            ' ', remove,
+            ' ', _button('删除记录', f'{config.prefix_short} del {bot.name}', '删除这条假人记录',
+                         color=RColor.red, warning='只删除插件记录，不会让在线假人下线', suggest=True),
+        )
+    result.append(
+        '\n\n', _button('刷新', prefix, '重新显示当前详情'),
+        ' ', _button('假人列表', f'{config.prefix_short} list', '查看已登记的假人'),
+        RText('\n普通按钮点击执行，输入和删除操作需回车', RColor.gray),
+    )
+    return result
+
+
+def render_alias_panel(bot: Bot) -> RTextList:
+    prefix = f'{config.prefix_short} {bot.name}'
+    aliases = bot.aliases
+    result = RTextList(
+        RText('----- ', RColor.gray), RText(_display_name(bot), RColor.gold),
+        RText(' · 别名管理 -----\n', RColor.gray),
+        _display_player_name(bot),
+        RText('\n登记名: ', RColor.gray), RText(bot.name, RColor.white),
+        RText('\n登记名和假人名始终可查找，不可移除\n', RColor.gray),
+    )
+    if aliases:
+        for alias in aliases:
+            result.append(
+                '\n', RText(alias, RColor.white), ' ',
+                _button('移除', f'{prefix} alias del {alias}', f'移除别名「{alias}」',
+                        color=RColor.red, warning='只移除别名，不删除记录或下线假人', suggest=True),
+            )
+    else:
+        result.append('\n', RText('无自定义别名', RColor.gray))
+    result.append(
+        '\n\n', _button('添加别名', f'{prefix} alias add ', '在末尾填写新别名', color=RColor.green, suggest=True),
+        ' ', _button('返回详情', prefix, '返回假人详情面板'),
+        RText('\n添加和移除别名需回车，返回详情可直接点击', RColor.gray),
+    )
+    return result
+
+
+def _short_label(text: str, width: int = 24) -> str:
+    # Approximate chat width for search keywords without changing the query.
+    widths = [2 if unicodedata.east_asian_width(char) in 'WF' else 1 for char in text]
+    if sum(widths) <= width:
+        return text
+    used = 0
+    for index, size in enumerate(widths):
+        if used + size > width - 1:
+            return text[:index] + '…'
+        used += size
+    return text
+
+
+def _chat_text_width(text: str) -> int:
+    # Estimate the unstyled default font, not resource packs or the uniform font.
+    return sum(_CHAT_GLYPH_WIDTHS.get(char, 9 if unicodedata.east_asian_width(char) in 'WF' else 6)
+               for char in text)
+
+
+def _short_list_name(name: str) -> str:
+    return name if len(name) <= LIST_NAME_LIMIT else name[:LIST_NAME_LIMIT] + '…'
+
+
+def _list_name_padding(name: str, width: int) -> str:
+    space_width = _CHAT_GLYPH_WIDTHS[' ']
+    remaining = width - _chat_text_width(name)
+    # Round to the nearest ordinary space; the button keeps its own separator.
+    return ' ' * max(0, (remaining + space_width // 2) // space_width)
+
+
+def render_bot_summary(bot: Bot, *, can_operate: bool = True, online: bool | None = None,
+                       name_width: int = 0) -> RTextList:
+    online = bot.is_online if online is None else online
+    prefix = f'{config.prefix_short} {bot.name}'
+    name = _display_name(bot)
+    short_name = _short_list_name(name)
+    hover = RTextList(
+        RText(name, RColor.gold), RText(f'\n登记名: {bot.name}\n', RColor.gray),
+        _record_details(bot),
+    )
+    result = RTextList(
+        RText('[', RColor.gray), _online_status(online), RText('] ', RColor.gray),
+        RText(short_name, RColor.gold).h(hover),
+        _list_name_padding(short_name, name_width),
+    )
+    if can_operate:
+        if online:
+            result.append(' ', _button('下线', f'{prefix} kill', '请求让假人下线，保留插件记录', color=RColor.red))
+        else:
+            result.append(' ', _button('召唤', f'{prefix} spawn', '在执行玩家身边召唤假人', color=RColor.green))
+        result.append(' ', _button('扔出所有', f'{prefix} all', '扔出全部物品栏物品',
+                                          warning='离线时先在执行玩家身边召唤；在线时在假人原地扔出'))
+    result.append(' ', _button('详情', prefix, '查看详情与可用的管理入口'))
+    return result
+
+
+def _list_command(status: str = 'all', query: str | None = None, page: int = 1) -> str:
+    command = f'{config.prefix_short} list'
+    if status != 'all':
+        command += f' {status}'
+    if query is not None:
+        command += f' search {query}'
+    if page != 1:
+        command += f' {page}'
+    return command
+
+
+def render_bot_list(bots: list[Bot], *, status: str = 'all', query: str | None = None,
+                    page: int = 1, can_operate: bool = True) -> RTextList:
+    if status not in _LIST_STATUSES:
+        raise ValueError('未知的列表筛选条件')
+    if type(page) is not int or page < 1:
+        raise ValueError('页码必须为正整数')
+    if query is not None and (not query or any(ch.isspace() or ord(ch) < 32 or ord(ch) == 127 for ch in query)):
+        raise ValueError('搜索关键词不能为空，也不能包含空白或控制字符')
+
+    # Read each online flag once so filtering, row status and controls agree.
+    rows = [(bot, bot.is_online) for bot in bots]
+    if status != 'all':
+        rows = [(bot, online) for bot, online in rows if online == (status == 'online')]
+    if query is not None:
+        needle = query.casefold()
+        rows = [(bot, online) for bot, online in rows if any(
+            needle in name.casefold() for name in (bot.name, bot.real_name, *bot.aliases))]
+    rows.sort(key=lambda row: (row[0].name.casefold(), row[0].name))
+    total = len(rows)
+    pages = max(1, (total + LIST_PAGE_SIZE - 1) // LIST_PAGE_SIZE)
+    requested_page = page
+    page = min(page, pages)
+
+    result = RTextList(
+        RText('假人列表', RColor.gold), RText(' · ', RColor.gray), RText(_LIST_STATUSES[status], RColor.white),
+        RText(' · 第 ', RColor.gray), RText(f'{page}/{pages}', RColor.white), RText(' 页 · 共 ', RColor.gray),
+        RText(str(total), RColor.white), RText(' 个', RColor.gray),
+    )
+    if query is not None:
+        result.append(
+            RText('\n搜索: ', RColor.gray), RText(_short_label(query), RColor.white).h(RText(query, RColor.white)),
+        )
+    result.append('\n')
+    for mode, label in _LIST_STATUSES.items():
+        if mode == status:
+            result.append(RText(f'[{label}]', RColor.gold).h(RText(f'当前筛选: {label}', RColor.gray)))
+        else:
+            result.append(_button(label, _list_command(mode, query), f'查看{label}假人，保留搜索并回到第一页'))
+        result.append(' ')
+    result.append(_button('搜索', _list_command(status) + ' search ', '填写一个关键词，搜索登记名、假人名或别名',
+                          suggest=True))
+    if query is not None:
+        result.append(' ', _button('清除搜索', _list_command(status), '清除关键词，保留状态筛选并回到第一页'))
+
+    result.append('\n')
+    if requested_page > pages:
+        result.append(RText('\n页码超出范围，已显示最后一页', RColor.yellow))
+    if total:
+        start = (page - 1) * LIST_PAGE_SIZE
+        page_rows = rows[start:start + LIST_PAGE_SIZE]
+        # Only names actually shown on this page should determine its column width.
+        name_width = max(_chat_text_width(_short_list_name(_display_name(bot))) for bot, _ in page_rows)
+        for bot, online in page_rows:
+            result.append('\n', render_bot_summary(
+                bot, can_operate=can_operate, online=online, name_width=name_width))
+    elif not bots:
+        result.append(RText('\n尚未登记假人，可查看帮助了解添加方式', RColor.gray))
+    elif query is not None:
+        result.append(RText('\n没有找到符合条件的假人\n可换个关键词、清除搜索或切换状态筛选', RColor.gray))
+    else:
+        result.append(RText(f'\n没有{_LIST_STATUSES[status]}假人，可切换到「全部」查看记录', RColor.gray))
+
+    previous = (_button('上一页', _list_command(status, query, page - 1), '查看上一页，保留筛选和搜索') if page > 1 else
+                RText('[上一页]', RColor.gray).h(RText('已经是第一页', RColor.gray)))
+    following = (_button('下一页', _list_command(status, query, page + 1), '查看下一页，保留筛选和搜索') if page < pages else
+                 RText('[下一页]', RColor.gray).h(RText('已经是最后一页', RColor.gray)))
+    result.append(
+        '\n\n', previous, ' ', following,
+        ' ', _button('刷新', _list_command(status, query, page), '重新显示当前页，读取插件内存中的最新状态，不主动查询服务器'),
+    )
+    if not bots:
+        result.append(' ', _button('帮助', config.prefix_short, '查看添加假人的命令和权限要求'))
+    if not can_operate:
+        result.append(RText('\n当前无假人操作权限', RColor.gray))
+    result.append(RText('\n悬浮名称查看信息；普通按钮点击执行，搜索需回车', RColor.gray))
+    return result

@@ -1,0 +1,432 @@
+import json
+import threading
+from concurrent.futures import Future, ThreadPoolExecutor
+from pathlib import Path
+
+from mcdreforged.api.types import PluginServerInterface
+
+from .bot import Bot
+from .config import Config, config
+from .storage import read_json, write_json
+
+
+DEFAULT_BOTS_RESOURCE = 'config/bots.default.json'
+
+
+class BotManager:
+    MAX_PENDING_TASKS = 32
+
+    def __init__(self, server: PluginServerInterface):
+        self.server = server
+        self.bots: dict[str, Bot] = {}
+        self._lock = threading.RLock()
+        self._aliases: dict[str, Bot] = {}
+        self._real_names: dict[str, Bot] = {}
+        self._status_versions: dict[Bot, int] = {}
+        self._generation = 0
+        self._closed = False
+        self._write_blocked = False
+        self._pending_names: dict[str, str] = {}
+        self._name_save_future: Future | None = None
+        self._name_save_failed = False
+        self._pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix='botmono')
+        self._slots = threading.BoundedSemaphore(self.MAX_PENDING_TASKS)
+        self._tasks: set[Future] = set()
+        if not config.bots_path:
+            raise RuntimeError('假人数据路径尚未初始化')
+        if not Path(config.bots_path).exists():
+            with server.open_bundled_file(DEFAULT_BOTS_RESOURCE) as stream:
+                bots = self._parse_bots(json.load(stream), config)
+            # Validate the complete registry with the active affixes before creating the user's file.
+            write_json(config.bots_path, {name: bot.to_dict() for name, bot in bots.items()})
+        self.load()
+
+    @property
+    def generation(self) -> int:
+        with self._lock:
+            return self._generation
+
+    def is_active(self, generation: int | None = None) -> bool:
+        with self._lock:
+            return not self._closed and (generation is None or generation == self._generation)
+
+    def _check_active(self, generation: int | None = None) -> None:
+        if not self.is_active(generation):
+            raise RuntimeError('操作已因重载、卸载或服务器停止而取消')
+
+    def _check_writable(self) -> None:
+        self._check_active()
+        if self._write_blocked:
+            raise RuntimeError('bots.json 加载失败，已暂停写入；请修复文件后重载')
+
+    @staticmethod
+    def _indexes(bots: dict[str, Bot]) -> tuple[dict[str, Bot], dict[str, Bot]]:
+        aliases: dict[str, Bot] = {}
+        real_names: dict[str, Bot] = {}
+        for bot in bots.values():
+            for name in [bot.name, bot.real_name, *bot.aliases]:
+                key = name.casefold()
+                if key in {'add', 'del', 'list', 'reload'}:
+                    raise ValueError(f'{bot.name}: 名称或别名 {name!r} 与管理命令冲突')
+                if key in aliases and aliases[key] is not bot:
+                    raise ValueError(f'名称或别名 {name!r} 同时属于 {aliases[key].name} 和 {bot.name}')
+                aliases[key] = bot
+            real_names[bot.real_name.casefold()] = bot
+        return aliases, real_names
+
+    def _parse_bots(self, data, settings: Config) -> dict[str, Bot]:
+        if not isinstance(data, dict):
+            raise ValueError('bots.json 必须是 JSON 对象')
+        bots = {name: Bot.from_dict(self.server, name, value, settings) for name, value in data.items()}
+        self._indexes(bots)
+        return bots
+
+    def _read_bot_data(self, settings: Config) -> tuple[dict, dict[str, Bot]]:
+        try:
+            data = read_json(config.bots_path)
+            return data, self._parse_bots(data, settings)
+        except (OSError, ValueError):
+            self._write_blocked = True
+            raise
+
+    def _read_bots(self, settings: Config) -> dict[str, Bot]:
+        return self._read_bot_data(settings)[1]
+
+    def _inherit_confirmed_names(self, bots: dict[str, Bot]) -> dict[str, str]:
+        inherited = {}
+        for bot in bots.values():
+            old = self._real_names.get(bot.expected_name.casefold())
+            if old is not None and old.confirmed_name is not None and (
+                bot.confirmed_name is None or old.name in self._pending_names
+            ):
+                if bot.confirm_name(old.confirmed_name):
+                    inherited[bot.name] = old.confirmed_name
+        return inherited
+
+    def _install(self, bots: dict[str, Bot]) -> None:
+        inherited = self._inherit_confirmed_names(bots)
+        aliases, real_names = self._indexes(bots)
+        online_names = {bot.real_name.casefold() for bot in self.bots.values() if bot.is_online}
+        for name, old_bot in self.bots.items():
+            if bots.get(name) is not old_bot:
+                old_bot.cancel()
+        for bot in bots.values():
+            if bot.real_name.casefold() in online_names:
+                bot.is_online = True
+        self._status_versions = {bot: self._status_versions.get(bot, 0) for bot in bots.values()}
+        self.bots = bots
+        self._aliases = aliases
+        self._real_names = real_names
+        self._pending_names = {
+            name: player for name, player in {**self._pending_names, **inherited}.items()
+            if name in bots and bots[name].confirmed_name == player
+        }
+
+    def load(self) -> None:
+        with self._lock:
+            self._check_active()
+            bots = self._read_bots(config)
+            self._install(bots)
+            self._generation += 1
+            self._write_blocked = False
+            self._name_save_failed = False
+            self._request_name_save()
+
+    def reload_config(self) -> None:
+        with self._lock:
+            self._check_active()
+            settings = config.read()
+            if settings.prefix_short != config.prefix_short:
+                raise ValueError('修改命令前缀后请执行 !!MCDR plugin reload bot_mono；当前配置未应用')
+            bots = self._read_bots(settings)
+            config.apply(settings)
+            self._install(bots)
+            self._generation += 1
+            self._write_blocked = False
+            self._name_save_failed = False
+            self._request_name_save()
+
+    def _persist(self, bots: dict[str, Bot]) -> None:
+        self._check_writable()
+        self._read_bots(config)
+        write_json(config.bots_path, {name: bot.to_dict() for name, bot in bots.items()})
+        self._pending_names.clear()
+        self._name_save_failed = False
+
+    def save(self) -> None:
+        with self._lock:
+            self._persist(self.bots)
+
+    def _commit(self, bots: dict[str, Bot]) -> None:
+        self._inherit_confirmed_names(bots)
+        self._indexes(bots)
+        self._persist(bots)
+        self._install(bots)
+
+    def add_bot(self, bot: Bot) -> None:
+        with self._lock:
+            self._commit({**self.bots, bot.name: bot})
+
+    def upsert_bot(self, name: str, alias: str, generation: int | None = None) -> bool:
+        with self._lock:
+            self._check_active(generation)
+            old_bot = self.bots.get(name)
+            aliases = old_bot.aliases.copy() if old_bot else []
+            if alias not in aliases:
+                aliases.append(alias)
+            bot = Bot(self.server, name, aliases)
+            self._commit({**self.bots, name: bot})
+            return old_bot is None
+
+    def remove_bot(self, name: str) -> bool:
+        with self._lock:
+            self._check_writable()
+            if name not in self.bots:
+                return False
+            bots = self.bots.copy()
+            del bots[name]
+            self._commit(bots)
+            return True
+
+    def add_alias(self, target: str, alias: str) -> bool:
+        return self._edit_alias(target, alias, remove=False)
+
+    def remove_alias(self, target: str, alias: str) -> bool:
+        return self._edit_alias(target, alias, remove=True)
+
+    def _edit_alias(self, target: str, alias: str, *, remove: bool) -> bool:
+        with self._lock:
+            self._check_writable()
+            bot = self._aliases.get(target.casefold())
+            if bot is None:
+                raise ValueError(f'未查询到 {target} 对应的假人')
+            if not isinstance(alias, str) or not alias or any(
+                ch.isspace() or ord(ch) < 32 or ord(ch) == 127 for ch in alias
+            ):
+                raise ValueError('别名必须是非空、无空白或控制字符的字符串')
+            key = alias.casefold()
+            if remove:
+                if key in {bot.name.casefold(), bot.real_name.casefold()}:
+                    raise ValueError('登记名和游戏名不能通过删除别名移除')
+                aliases = [value for value in bot.aliases if value.casefold() != key]
+                if aliases == bot.aliases:
+                    return False
+            else:
+                if self._aliases.get(key) is bot:
+                    return False
+                aliases = [*bot.aliases, alias]
+
+            replacement = Bot.from_dict(self.server, bot.name, {**bot.to_dict(), 'aliases': aliases})
+            alias_index, _ = self._indexes({**self.bots, bot.name: replacement})
+            data, saved_bots = self._read_bot_data(config)
+            saved = saved_bots.get(bot.name)
+            if saved is None or saved.aliases != bot.aliases:
+                raise RuntimeError(f'磁盘上的假人记录或别名已变更，请先执行 {config.prefix_short} reload')
+            saved.aliases = replacement.aliases
+            self._indexes(saved_bots)
+            # Only patch aliases; external names and other records stay intact.
+            data[bot.name]['aliases'] = replacement.aliases
+            write_json(config.bots_path, data)
+
+            # Keep the active Bot and its status version, so waiting actions are not cancelled.
+            bot.aliases = replacement.aliases
+            self._aliases = {key: bot if value is replacement else value for key, value in alias_index.items()}
+            return True
+
+    def get_bot(self, name: str) -> Bot | None:
+        with self._lock:
+            return self.bots.get(name)
+
+    def resolve_bot(self, target: str, generation: int | None = None) -> Bot | None:
+        """按登记名、游戏名或别名查找，不区分大小写。"""
+        with self._lock:
+            self._check_active(generation)
+            return self._aliases.get(target.casefold())
+
+    def get_bot_by_real_name(self, real_name: str) -> Bot | None:
+        """通过假人的真实游戏名（带前后缀）查找 Bot 对象"""
+        with self._lock:
+            return self._real_names.get(real_name.casefold())
+
+    def get_all_bots(self) -> list[Bot]:
+        with self._lock:
+            return list(self.bots.values())
+
+    def get_online_bots(self) -> list[Bot]:
+        return [bot for bot in self.get_all_bots() if bot.is_online]
+
+    def get_offline_bots(self) -> list[Bot]:
+        return [bot for bot in self.get_all_bots() if not bot.is_online]
+
+    def set_bot_online(self, name: str):
+        with self._lock:
+            bot = self.bots.get(name)
+            if bot:
+                self._set_online(bot, True)
+
+    def set_bot_offline(self, name: str):
+        with self._lock:
+            bot = self.bots.get(name)
+            if bot:
+                self._set_online(bot, False)
+
+    def _set_online(self, bot: Bot, online: bool) -> None:
+        bot.is_online = online
+        self._status_versions[bot] += 1
+
+    def _confirm_name(self, bot: Bot, player: str) -> None:
+        if bot.confirm_name(player):
+            self._pending_names[bot.name] = player
+        self._name_save_failed = False
+
+    def update_player_status(self, player: str, online: bool, *, confirm: bool = True) -> None:
+        with self._lock:
+            if self._closed:
+                return
+            bot = self._real_names.get(player.casefold())
+            if bot:
+                if confirm:
+                    self._confirm_name(bot, player)
+                self._set_online(bot, online)
+                self._request_name_save()
+
+    def _request_name_save(self) -> None:
+        # Called under _lock; one queued task always reads the latest pending names.
+        if self._closed or self._write_blocked or self._name_save_failed or not self._pending_names:
+            return
+        if self._name_save_future is None:
+            try:
+                self._name_save_future = self.submit(self._save_confirmed_names)
+            except RuntimeError:
+                # A full queue retries when an existing task releases its slot.
+                pass
+
+    def _save_confirmed_names(self) -> None:
+        with self._lock:
+            if not self._closed:
+                self._flush_confirmed_names()
+
+    def _flush_confirmed_names(self) -> None:
+        # The caller holds _lock, including the final metadata-only flush at unload.
+        if not self._pending_names or self._write_blocked:
+            return
+        try:
+            data, saved_bots = self._read_bot_data(config)
+            changed = False
+            for name, player in self._pending_names.items():
+                current = self.bots.get(name)
+                saved = saved_bots.get(name)
+                if current is None or saved is None or current.confirmed_name != player:
+                    continue
+                if saved.expected_name.casefold() != current.expected_name.casefold():
+                    continue
+                # Patch only metadata, retaining external edits and deleted records.
+                if data[name].get('confirmed_name') != player:
+                    data[name]['confirmed_name'] = player
+                    changed = True
+            if changed:
+                write_json(config.bots_path, data)
+        except (OSError, ValueError) as error:
+            self._name_save_failed = True
+            retry = '请修复 bots.json 并重载' if self._write_blocked else '将在后续确认、重载或卸载时重试'
+            self.server.logger.warning(f'[BotMono] 假人真实名保存失败，内存中的名称仍可使用；{retry}: {error}')
+            return
+        self._pending_names.clear()
+        self._name_save_failed = False
+
+    def clear_all_online_status(self):
+        with self._lock:
+            if self._closed:
+                return
+            for bot in self.bots.values():
+                bot.is_online = False
+            bots = {name: Bot.from_dict(self.server, name, bot.to_dict()) for name, bot in self.bots.items()}
+            self._install(bots)
+            self._generation += 1
+            self._request_name_save()
+
+    def submit(self, callback, *args) -> Future:
+        with self._lock:
+            self._check_active()
+            if not self._slots.acquire(blocking=False):
+                raise RuntimeError('后台任务已满，请稍后重试')
+            generation = self._generation
+
+            def run():
+                if self.is_active(generation):
+                    return callback(*args)
+                return None
+
+            try:
+                future = self._pool.submit(run)
+            except Exception:
+                self._slots.release()
+                raise
+            self._tasks.add(future)
+            future.add_done_callback(self._task_done)
+            return future
+
+    def _task_done(self, future: Future) -> None:
+        error = None if future.cancelled() else future.exception()
+        with self._lock:
+            self._tasks.discard(future)
+            self._slots.release()
+            if future is self._name_save_future:
+                self._name_save_future = None
+                if error is not None:
+                    self._name_save_failed = True
+            self._request_name_save()
+        if error is not None:
+            self.server.logger.error(f'[BotMono] 后台任务失败: {error}')
+
+    def sync_online_status(self) -> bool:
+        with self._lock:
+            if self._closed or not self.server.is_server_startup():
+                return False
+            snapshot = {key: (bot, self._status_versions[bot]) for key, bot in self._real_names.items()}
+            generation = self._generation
+        if not snapshot:
+            return True
+        try:
+            import minecraft_data_api as api
+            result = api.get_server_player_list()
+            if result is None:
+                self.server.logger.warning('[BotMono] 在线列表查询超时，保留当前状态')
+                return False
+            players = {name.casefold(): name for name in result[2]}
+        except Exception as error:
+            self.server.logger.warning(f'[BotMono] 无法同步在线列表，保留当前状态: {error}')
+            return False
+        with self._lock:
+            if not self.is_active(generation):
+                return False
+            # 查询期间收到的加入/退出事件优先，旧快照不能覆盖它们。
+            for key, (bot, version) in snapshot.items():
+                if self._real_names.get(key) is bot and self._status_versions[bot] == version:
+                    if key in players:
+                        self._confirm_name(bot, players[key])
+                    self._set_online(bot, key in players)
+            self._request_name_save()
+        return True
+
+    def request_sync(self) -> Future | None:
+        if self.server.is_server_startup():
+            try:
+                return self.submit(self.sync_online_status)
+            except RuntimeError as error:
+                self.server.logger.warning(f'[BotMono] 未能安排在线状态同步: {error}')
+        return None
+
+    def shutdown(self) -> None:
+        with self._lock:
+            if self._closed:
+                return
+            self._closed = True
+            self._generation += 1
+            for bot in self.bots.values():
+                bot.cancel()
+            self._flush_confirmed_names()
+            tasks = list(self._tasks)
+        for task in tasks:
+            task.cancel()
+        self._pool.shutdown(wait=False, cancel_futures=True)

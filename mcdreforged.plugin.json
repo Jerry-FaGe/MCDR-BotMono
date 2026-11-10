@@ -1,0 +1,19 @@
+{
+	"id": "bot_mono",
+	"version": "1.0.0",
+	"name": "BotMono",
+	"description": {
+		"zh_cn": "使用中文别名召唤随身物品假人，支持扔出单件、主手整组或全部物品。"
+	},
+	"author": ["Jerry-FaGe"],
+	"link": "https://github.com/Jerry-FaGe/MCDR-BotMono",
+	"dependencies": {
+		"python": ">=3.10",
+		"mcdreforged": ">=2.12.0",
+		"minecraft_data_api": ">=1.6.2"
+	},
+	"resources": [
+		"LICENSE",
+		"config"
+	]
+}

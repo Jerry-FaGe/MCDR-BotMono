@@ -1,0 +1,9 @@
+.DS_store
+*.mcdr
+.vscode
+.idea
+__pycache__
+*.pyc
+.pytest_cache/
+.venv*/
+dist/

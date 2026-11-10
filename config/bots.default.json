@@ -1,0 +1,302 @@
+{
+    "Fireworks": {
+        "aliases": ["烟花火箭", "烟花", "火箭", "yanhuahuojian", "yanhua", "huojian", "firework_rocket"]
+    },
+    "Elytra": {
+        "aliases": ["鞘翅", "qiaochi"]
+    },
+    "EnderPearl": {
+        "aliases": ["末影珍珠", "珍珠", "moyingzhenzhu", "zhenzhu", "ender_pearl"]
+    },
+    "GoldenCarrot": {
+        "aliases": ["金胡萝卜", "金萝卜", "jinhuluobo", "jinluobo", "golden_carrot"]
+    },
+    "CookedBeef": {
+        "aliases": ["牛排", "熟牛肉", "niupai", "shuniurou", "cooked_beef"]
+    },
+    "GoldenApple": {
+        "aliases": ["金苹果", "jinpingguo", "golden_apple"]
+    },
+    "Totem": {
+        "aliases": ["不死图腾", "图腾", "busituteng", "tuteng", "totem_of_undying"]
+    },
+    "Torch": {
+        "aliases": ["火把", "huoba"]
+    },
+    "Lantern": {
+        "aliases": ["灯笼", "denglong"]
+    },
+    "WaterBucket": {
+        "aliases": ["水桶", "shuitong", "water_bucket"]
+    },
+    "LavaBucket": {
+        "aliases": ["熔岩桶", "岩浆桶", "rongyantong", "yanjiangtong", "lava_bucket"]
+    },
+    "Sponge": {
+        "aliases": ["海绵", "haimian"]
+    },
+    "Scaffolding": {
+        "aliases": ["脚手架", "jiaoshoujia"]
+    },
+    "Bed": {
+        "aliases": ["红色床", "床", "红床", "hongsechuang", "chuang", "hongchuang", "red_bed"]
+    },
+    "Boat": {
+        "aliases": ["橡木船", "船", "xiangmuchuan", "chuan", "oak_boat"]
+    },
+    "Lead": {
+        "aliases": ["拴绳", "牵引绳", "栓绳", "shuansheng", "qianyinsheng"]
+    },
+    "Stone": {
+        "aliases": ["石头", "shitou"]
+    },
+    "Cobblestone": {
+        "aliases": ["圆石", "鹅卵石", "yuanshi", "eluanshi"]
+    },
+    "Deepslate": {
+        "aliases": ["深板岩", "shenbanyan"]
+    },
+    "CobbledDeep": {
+        "aliases": ["深板岩圆石", "shenbanyanyuanshi", "cobbled_deepslate"]
+    },
+    "Dirt": {
+        "aliases": ["泥土", "土", "nitu", "tu"]
+    },
+    "GrassBlock": {
+        "aliases": ["草方块", "草块", "caofangkuai", "caokuai", "grass_block"]
+    },
+    "Sand": {
+        "aliases": ["沙子", "沙", "shazi", "sha"]
+    },
+    "RedSand": {
+        "aliases": ["红沙", "hongsha", "red_sand"]
+    },
+    "Gravel": {
+        "aliases": ["沙砾", "砂砾", "shali"]
+    },
+    "Glass": {
+        "aliases": ["玻璃", "boli"]
+    },
+    "GlassPane": {
+        "aliases": ["玻璃板", "boliban", "glass_pane"]
+    },
+    "Obsidian": {
+        "aliases": ["黑曜石", "heiyaoshi"]
+    },
+    "Netherrack": {
+        "aliases": ["下界岩", "地狱岩", "xiajieyan", "diyuyan"]
+    },
+    "EndStone": {
+        "aliases": ["末地石", "modishi", "end_stone"]
+    },
+    "Blackstone": {
+        "aliases": ["黑石", "heishi"]
+    },
+    "StoneBricks": {
+        "aliases": ["石砖", "shizhuan", "stone_bricks"]
+    },
+    "Bricks": {
+        "aliases": ["红砖块", "砖块", "hongzhuankuai", "zhuankuai"]
+    },
+    "SmoothStone": {
+        "aliases": ["平滑石", "pinghuashi", "smooth_stone"]
+    },
+    "WhiteWool": {
+        "aliases": ["白色羊毛", "羊毛", "白羊毛", "baiseyangmao", "yangmao", "white_wool"]
+    },
+    "Concrete": {
+        "aliases": ["白色混凝土", "混凝土", "白混凝土", "baisehunningtu", "hunningtu", "white_concrete"]
+    },
+    "Ice": {
+        "aliases": ["冰", "bing"]
+    },
+    "PackedIce": {
+        "aliases": ["浮冰", "fubing", "packed_ice"]
+    },
+    "BlueIce": {
+        "aliases": ["蓝冰", "lanbing", "blue_ice"]
+    },
+    "SeaLantern": {
+        "aliases": ["海晶灯", "haijingdeng", "sea_lantern"]
+    },
+    "Glowstone": {
+        "aliases": ["荧石", "yingshi"]
+    },
+    "OakLog": {
+        "aliases": ["橡木原木", "橡木", "xiangmuyuanmu", "xiangmu", "oak_log"]
+    },
+    "SpruceLog": {
+        "aliases": ["云杉原木", "云杉木", "yunshanyuanmu", "yunshanmu", "spruce_log"]
+    },
+    "OakPlanks": {
+        "aliases": ["橡木木板", "橡木板", "木板", "xiangmumuban", "xiangmuban", "muban", "oak_planks"]
+    },
+    "IronIngot": {
+        "aliases": ["铁锭", "铁", "tieding", "tie", "iron_ingot"]
+    },
+    "GoldIngot": {
+        "aliases": ["金锭", "金", "jinding", "jin", "gold_ingot"]
+    },
+    "CopperIngot": {
+        "aliases": ["铜锭", "铜", "tongding", "tong", "copper_ingot"]
+    },
+    "Diamond": {
+        "aliases": ["钻石", "zuanshi"]
+    },
+    "Emerald": {
+        "aliases": ["绿宝石", "lvbaoshi"]
+    },
+    "Netherite": {
+        "aliases": ["下界合金锭", "下界合金", "xiajiehejinding", "xiajiehejin", "netherite_ingot"]
+    },
+    "Coal": {
+        "aliases": ["煤炭", "煤", "meitan", "mei"]
+    },
+    "Redstone": {
+        "aliases": ["红石粉", "红石", "hongshifen", "hongshi"]
+    },
+    "Lapis": {
+        "aliases": ["青金石", "qingjinshi", "lapis_lazuli"]
+    },
+    "Quartz": {
+        "aliases": ["下界石英", "石英", "xiajieshiying", "shiying"]
+    },
+    "Slimeball": {
+        "aliases": ["黏液球", "粘液球", "史莱姆球", "nianyeqiu", "zhanyeqiu", "shilaimuqiu", "slime_ball"]
+    },
+    "String": {
+        "aliases": ["线", "蜘蛛丝", "xian", "zhizhusi"]
+    },
+    "Leather": {
+        "aliases": ["皮革", "pige"]
+    },
+    "Paper": {
+        "aliases": ["纸", "zhi"]
+    },
+    "Gunpowder": {
+        "aliases": ["火药", "huoyao"]
+    },
+    "Flint": {
+        "aliases": ["燧石", "suishi"]
+    },
+    "Stick": {
+        "aliases": ["木棍", "mugun"]
+    },
+    "BoneMeal": {
+        "aliases": ["骨粉", "gufen", "bone_meal"]
+    },
+    "ShulkerShell": {
+        "aliases": ["潜影壳", "qianyingke", "shulker_shell"]
+    },
+    "IronBlock": {
+        "aliases": ["铁块", "tiekuai", "iron_block"]
+    },
+    "Piston": {
+        "aliases": ["活塞", "huosai"]
+    },
+    "StickyPiston": {
+        "aliases": ["黏性活塞", "粘性活塞", "黏活塞", "粘活塞", "nianxinghuosai", "zhanxinghuosai", "sticky_piston"]
+    },
+    "Observer": {
+        "aliases": ["侦测器", "观察者", "zhenceqi", "guanchazhe"]
+    },
+    "Repeater": {
+        "aliases": ["红石中继器", "中继器", "hongshizhongjiqi", "zhongjiqi"]
+    },
+    "Comparator": {
+        "aliases": ["红石比较器", "比较器", "hongshibijiaoqi", "bijiaoqi"]
+    },
+    "RedTorch": {
+        "aliases": ["红石火把", "hongshihuoba", "redstone_torch"]
+    },
+    "RedLamp": {
+        "aliases": ["红石灯", "hongshideng", "redstone_lamp"]
+    },
+    "RedBlock": {
+        "aliases": ["红石块", "hongshikuai", "redstone_block"]
+    },
+    "Lever": {
+        "aliases": ["拉杆", "lagan"]
+    },
+    "StoneButton": {
+        "aliases": ["石按钮", "石质按钮", "按钮", "shianniu", "shizhianniu", "anniu", "stone_button"]
+    },
+    "Hopper": {
+        "aliases": ["漏斗", "loudou"]
+    },
+    "Dispenser": {
+        "aliases": ["发射器", "fasheqi"]
+    },
+    "Dropper": {
+        "aliases": ["投掷器", "touzhiqi"]
+    },
+    "NoteBlock": {
+        "aliases": ["音符盒", "yinfuhe", "note_block"]
+    },
+    "Rail": {
+        "aliases": ["铁轨", "普通铁轨", "tiegui", "putongtiegui"]
+    },
+    "PoweredRail": {
+        "aliases": ["动力铁轨", "充能铁轨", "donglitiegui", "chongnengtiegui", "powered_rail"]
+    },
+    "Minecart": {
+        "aliases": ["矿车", "kuangche"]
+    },
+    "HopperCart": {
+        "aliases": ["漏斗矿车", "loudoukuangche", "hopper_minecart"]
+    },
+    "Tnt": {
+        "aliases": ["炸药", "zhayao"]
+    },
+    "SlimeBlock": {
+        "aliases": ["黏液块", "粘液块", "nianyekuai", "zhanyekuai", "slime_block"]
+    },
+    "HoneyBlock": {
+        "aliases": ["蜂蜜块", "fengmikuai", "honey_block"]
+    },
+    "DetectorRail": {
+        "aliases": ["探测铁轨", "tancetiegui", "detector_rail"]
+    },
+    "Chest": {
+        "aliases": ["箱子", "木箱", "xiangzi", "muxiang"]
+    },
+    "TrappedChest": {
+        "aliases": ["陷阱箱", "xianjingxiang", "trapped_chest"]
+    },
+    "Barrel": {
+        "aliases": ["木桶", "mutong"]
+    },
+    "ShulkerBox": {
+        "aliases": ["潜影盒", "盒子", "qianyinghe", "hezi", "shulker_box"]
+    },
+    "EnderChest": {
+        "aliases": ["末影箱", "moyingxiang", "ender_chest"]
+    },
+    "CraftTable": {
+        "aliases": ["工作台", "合成台", "gongzuotai", "hechengtai", "crafting_table"]
+    },
+    "Furnace": {
+        "aliases": ["熔炉", "炉子", "ronglu", "luzi"]
+    },
+    "Anvil": {
+        "aliases": ["铁砧", "tiezhen"]
+    },
+    "DiamondPick": {
+        "aliases": ["钻石镐", "钻镐", "zuanshigao", "zuangao", "diamond_pickaxe"]
+    },
+    "DiamondAxe": {
+        "aliases": ["钻石斧", "钻石斧头", "钻斧", "zuanshifu", "zuanshifutou", "diamond_axe"]
+    },
+    "DiamondShov": {
+        "aliases": ["钻石锹", "钻石铲", "钻铲", "zuanshiqiao", "zuanshichan", "diamond_shovel"]
+    },
+    "DiamondSword": {
+        "aliases": ["钻石剑", "钻剑", "zuanshijian", "zuanjian", "diamond_sword"]
+    },
+    "Arrow": {
+        "aliases": ["箭", "箭矢", "jian", "jianshi"]
+    },
+    "Shears": {
+        "aliases": ["剪刀", "jiandao"]
+    }
+}
